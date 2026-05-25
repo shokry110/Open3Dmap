@@ -33,6 +33,9 @@ const boqStore = new Map(); // boqId -> BOQ document
 /** VAT rate as a decimal. Set BOQ_VAT_RATE env var to override (e.g. "0.07"). */
 const VAT_RATE = parseFloat(process.env.BOQ_VAT_RATE) || 0.05;
 
+/** Maximum number of HubSpot contacts returned per request. */
+const MAX_HUBSPOT_CONTACTS_LIMIT = 100;
+
 // ---------------------------------------------------------------------------
 // Pure helpers — exported for unit testing
 // ---------------------------------------------------------------------------
@@ -192,7 +195,7 @@ function buildHubspotNoteBody(boq) {
     lines,
     '',
     `Sub-Total  : ${boq.subTotal}`,
-    `VAT (5%)   : ${boq.vatAmount}`,
+    `VAT (${(VAT_RATE * 100).toFixed(0)}%) : ${boq.vatAmount}`,
     `Grand Total: ${boq.grandTotal}`,
   ].join('\n');
 }
@@ -375,7 +378,7 @@ export async function handleRequest(req, res) {
     // -----------------------------------------------------------------------
     if (method === 'GET' && subPath === '/hubspot/contacts') {
       const qs    = new URL(req.url, 'http://localhost').searchParams;
-      const limit = Math.min(parseInt(qs.get('limit'), 10) || 20, 100);
+      const limit = Math.min(parseInt(qs.get('limit'), 10) || 20, MAX_HUBSPOT_CONTACTS_LIMIT);
       try {
         const contacts = await fetchHubspotContacts(limit);
         sendJson(res, 200, { success: true, contacts });
