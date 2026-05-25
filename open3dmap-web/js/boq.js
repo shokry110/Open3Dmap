@@ -259,7 +259,7 @@ function onItemInput(evt) {
 
   const qty       = parseFloat(qtyField?.value)   || 0;
   const unitPrice = parseFloat(priceField?.value) || 0;
-  const lineTotal = parseFloat((qty * unitPrice).toFixed(2));
+  const lineTotal = Math.round(qty * unitPrice * 100) / 100;
   const totalCell = row.querySelector('.line-total');
   if (totalCell) totalCell.textContent = lineTotal.toFixed(2);
 
@@ -379,7 +379,7 @@ function populateContactSelect(contacts) {
   const select = el('hubspot-contact-select');
   if (!select) return;
   select.innerHTML = `<option value="">— Select HubSpot contact —</option>` +
-    contacts.map(c => `<option value="${c.id}" data-email="${escHtml(c.email)}" data-phone="${escHtml(c.phone)}">${escHtml(c.name)} (${escHtml(c.company || c.email)})</option>`).join('');
+    contacts.map(c => `<option value="${c.id}" data-name="${escHtml(c.name)}" data-email="${escHtml(c.email)}" data-phone="${escHtml(c.phone)}">${escHtml(c.name)} (${escHtml(c.company || c.email)})</option>`).join('');
 }
 
 function onContactSelected(evt) {
@@ -390,8 +390,8 @@ function onContactSelected(evt) {
   const emailInput = document.querySelector('[name="clientEmail"]');
   const phoneInput = document.querySelector('[name="clientPhone"]');
 
-  // Pre-fill form fields from the selected contact
-  if (nameInput)  nameInput.value  = option.textContent.split('(')[0].trim();
+  // Pre-fill form fields from data attributes on the option element
+  if (nameInput)  nameInput.value  = option.dataset.name  || '';
   if (emailInput) emailInput.value = option.dataset.email || '';
   if (phoneInput) phoneInput.value = option.dataset.phone || '';
 

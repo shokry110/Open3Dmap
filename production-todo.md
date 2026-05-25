@@ -12,7 +12,7 @@ This file tracks the outstanding tasks for the BOQ module that integrates with H
 ## 2. Material Calculation Logic
 - [x] Backend logic to calculate cost: price per square metre **or** price per piece
 - [x] Support dynamic line items sent from the frontend (quantity × unit price)
-- [x] Sub-total, VAT (±5 %), and grand-total derived automatically
+- [x] Sub-total, VAT (5 %, configurable via `BOQ_VAT_RATE` env var), and grand-total derived automatically
 
 ## 3. PDF Generation
 - [x] Server-side PDF endpoint (`GET /api/boq/:id/pdf`) using `jsPDF` / HTML-to-PDF

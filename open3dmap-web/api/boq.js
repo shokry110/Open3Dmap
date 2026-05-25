@@ -30,6 +30,9 @@
 // ---------------------------------------------------------------------------
 const boqStore = new Map(); // boqId -> BOQ document
 
+/** VAT rate as a decimal. Set BOQ_VAT_RATE env var to override (e.g. "0.07"). */
+const VAT_RATE = parseFloat(process.env.BOQ_VAT_RATE) || 0.05;
+
 // ---------------------------------------------------------------------------
 // Pure helpers — exported for unit testing
 // ---------------------------------------------------------------------------
@@ -37,6 +40,15 @@ const boqStore = new Map(); // boqId -> BOQ document
 /** Generate a short random ID */
 export function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+/**
+ * Return the display label for a line item's unit.
+ * @param {object} item
+ * @returns {string}
+ */
+export function itemUnitLabel(item) {
+  return item.pricingType === 'per_sqm' ? 'm²' : (item.unit || 'pc');
 }
 
 /**
@@ -48,7 +60,7 @@ export function generateId() {
 export function calculateLineItem(item) {
   const qty       = parseFloat(item.qty)       || 0;
   const unitPrice = parseFloat(item.unitPrice) || 0;
-  const lineTotal = parseFloat((qty * unitPrice).toFixed(2));
+  const lineTotal = Math.round(qty * unitPrice * 100) / 100;
   return { ...item, qty, unitPrice, lineTotal };
 }
 
@@ -59,10 +71,9 @@ export function calculateLineItem(item) {
  * @returns {{ subTotal, vatAmount, grandTotal }}
  */
 export function deriveTotals(items, includeVat) {
-  const subTotal  = parseFloat(items.reduce((s, i) => s + (i.lineTotal || 0), 0).toFixed(2));
-  const vatRate   = 0.05; // 5 %
-  const vatAmount = includeVat ? parseFloat((subTotal * vatRate).toFixed(2)) : 0;
-  const grandTotal = parseFloat((subTotal + vatAmount).toFixed(2));
+  const subTotal   = Math.round(items.reduce((s, i) => s + (i.lineTotal || 0), 0) * 100) / 100;
+  const vatAmount  = includeVat ? Math.round(subTotal * VAT_RATE * 100) / 100 : 0;
+  const grandTotal = Math.round((subTotal + vatAmount) * 100) / 100;
   return { subTotal, vatAmount, grandTotal };
 }
 
@@ -239,7 +250,7 @@ function buildPdfHtml(boq) {
     <tr>
       <td>${i + 1}</td>
       <td>${escapeHtml(item.description || '')}</td>
-      <td>${escapeHtml(item.pricingType === 'per_sqm' ? 'm²' : (item.unit || 'pc'))}</td>
+      <td>${escapeHtml(itemUnitLabel(item))}</td>
       <td class="num">${item.qty}</td>
       <td class="num">${item.unitPrice}</td>
       <td class="num">${item.lineTotal}</td>
@@ -364,7 +375,7 @@ export async function handleRequest(req, res) {
     // -----------------------------------------------------------------------
     if (method === 'GET' && subPath === '/hubspot/contacts') {
       const qs    = new URL(req.url, 'http://localhost').searchParams;
-      const limit = parseInt(qs.get('limit'), 10) || 20;
+      const limit = Math.min(parseInt(qs.get('limit'), 10) || 20, 100);
       try {
         const contacts = await fetchHubspotContacts(limit);
         sendJson(res, 200, { success: true, contacts });
