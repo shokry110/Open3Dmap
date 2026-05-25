@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import url from 'url';
 import { fileURLToPath } from 'url';
+import { handleRequest as handleBoqRequest } from './api/boq.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +33,12 @@ const mimeTypes = {
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url);
   let pathname = parsedUrl.pathname;
+
+  // Route all /api/boq/* requests to the BOQ API handler
+  if (pathname.startsWith('/api/boq')) {
+    handleBoqRequest(req, res);
+    return;
+  }
 
   // Default to index.html if no specific file is requested
   if (pathname === '/') {
@@ -79,6 +86,7 @@ server.listen(port, () => {
   console.log(`📱 Main App: http://localhost:${port}/index.html`);
   console.log(`📊 Dashboard: http://localhost:${port}/dashboard.html`);
   console.log(`🎨 Brush Trainer: http://localhost:${port}/brush-trainer.html`);
+  console.log(`📑 BOQ Tool:     http://localhost:${port}/boq.html`);
   console.log(`⏹️  Press Ctrl+C to stop the server`);
 });
 

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill of Quantities — Open3DMap</title>
+    <link rel="stylesheet" href="styles/main.css?v=1735161907">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* ── BOQ-specific overrides ── */
+        .boq-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* Page header */
+        .boq-page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .boq-page-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--text-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        /* Form grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .form-group input,
+        .form-group select {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 0.55rem 0.85rem;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        .form-group input::placeholder { color: var(--text-muted); }
+
+        /* Toggle checkbox row */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        .toggle-row input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--primary-color); }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .status-badge[data-status="draft"]     { background: rgba(245,158,11,0.15); color: var(--warning-color); }
+        .status-badge[data-status="finalised"] { background: rgba(34,197,94,0.15);  color: var(--success-color); }
+
+        /* Items table */
+        .items-table-wrap { overflow-x: auto; }
+        table.items-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.items-table th {
+            background: var(--surface-elevated);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        table.items-table td {
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        table.items-table tr:hover td { background: rgba(255,255,255,0.02); }
+        table.items-table .row-num { color: var(--text-muted); font-size: 0.85rem; width: 36px; }
+        table.items-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+        table.items-table .empty-row td {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        /* Inline inputs inside table */
+        .item-field {
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 0.3rem 0.5rem;
+            font-size: 0.9rem;
+            width: 100%;
+            transition: border-color 0.15s;
+        }
+        .item-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: var(--surface-elevated);
+        }
+        .num-field { text-align: right; max-width: 100px; }
+
+        /* Totals strip */
+        .totals-table {
+            width: 320px;
+            margin-left: auto;
+            border-collapse: collapse;
+        }
+        .totals-table td { padding: 0.35rem 0.8rem; }
+        .totals-table .label { color: var(--text-secondary); font-size: 0.9rem; }
+        .totals-table .amount { text-align: right; font-variant-numeric: tabular-nums; }
+        .totals-table .grand-row td { border-top: 1px solid var(--border-color); font-weight: 700; font-size: 1.05rem; padding-top: 0.6rem; }
+
+        /* Action bar */
+        .action-bar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1.1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; transition: var(--transition-fast); }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .btn-primary   { background: var(--primary-color); color: #000; }
+        .btn-primary:hover:not(:disabled)   { background: var(--primary-hover); }
+        .btn-secondary { background: var(--surface-elevated); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-secondary:hover:not(:disabled) { border-color: var(--primary-color); }
+        .btn-success   { background: var(--success-color); color: #000; }
+        .btn-success:hover:not(:disabled)   { filter: brightness(1.1); }
+        .btn-danger    { background: var(--error-color); color: #fff; }
+        .btn-icon { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem 0.4rem; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+        .btn-icon:hover { color: var(--error-color); background: rgba(239,68,68,0.1); }
+
+        /* Toast notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-width: 340px;
+        }
+        .toast {
+            padding: 0.75rem 1.1rem;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s, transform 0.3s;
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .toast-visible { opacity: 1; transform: translateY(0); }
+        .toast-success { border-color: var(--success-color); color: var(--success-color); }
+        .toast-error   { border-color: var(--error-color);   color: var(--error-color);   }
+        .toast-warning { border-color: var(--warning-color); color: var(--warning-color); }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .totals-table { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ── Navbar ── -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <picture>
+                    <source src="assets/open3dmap.webp" type="image/webp">
+                    <img src="assets/open3dmap.png" alt="Open3DMap" class="logo">
+                </picture>
+                <span class="brand-text">Open3DMap</span>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html"     class="nav-link">Home</a>
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="boq.html"       class="nav-link active">BOQ</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Main ── -->
+    <main class="boq-container">
+
+        <!-- ===== Create section ===== -->
+        <section id="create-section">
+            <div class="boq-page-header">
+                <h1><i class="fas fa-file-invoice-dollar"></i> New Bill of Quantities</h1>
+            </div>
+
+            <!-- HubSpot contact selector -->
+            <div class="card">
+                <div class="card-title"><i class="fas fa-address-book"></i> Import from HubSpot CRM</div>
+                <div class="form-group">
+                    <label for="hubspot-contact-select">Select a CRM contact to pre-fill client details</label>
+                    <select id="hubspot-contact-select">
+                        <option value="">Loading contacts…</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Create form -->
+            <div class="card">
+                <div class="card-title"><i class="fas fa-clipboard-list"></i> BOQ Details</div>
+                <form id="create-boq-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="boq-title-input">BOQ Title *</label>
+                            <input id="boq-title-input" name="title" type="text" placeholder="e.g. Renovation – Villa 12" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="company-name-input">Company Name</label>
+                            <input id="company-name-input" name="companyName" type="text" placeholder="Your company name">
+                        </div>
+                        <div class="form-group">
+                            <label for="client-name-input">Client Name</label>
+                            <input id="client-name-input" name="clientName" type="text" placeholder="Client full name">
+                        </div>
+                        <div class="form-group">
+                            <label for="client-email-input">Client Email</label>
+                            <input id="client-email-input" name="clientEmail" type="email" placeholder="client@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="client-phone-input">Client Phone</label>
+                            <input id="client-phone-input" name="clientPhone" type="tel" placeholder="+1 555 000 0000">
+                        </div>
+                        <div class="form-group" style="justify-content: flex-end; padding-bottom: 0.2rem;">
+                            <label>&nbsp;</label>
+                            <label class="toggle-row">
+                                <input type="checkbox" name="includeVat" id="create-vat-check" checked>
+                                Include VAT (5%)
+                            </label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.25rem;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create BOQ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ===== BOQ section ===== -->
+        <section id="boq-section" style="display:none;">
+            <div class="boq-page-header">
+                <div>
+                    <h1 id="boq-title">—</h1>
+                    <div style="margin-top:0.3rem; color:var(--text-secondary); font-size:0.9rem;">
+                        Client: <strong id="boq-client">—</strong>
+                        &nbsp;·&nbsp;
+                        <span id="boq-status-badge" class="status-badge" data-status="draft">draft</span>
+                    </div>
+                </div>
+                <div class="action-bar" style="margin-bottom:0;">
+                    <button id="pdf-btn" class="btn btn-secondary">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button id="push-hubspot-btn" class="btn btn-secondary">
+                        <i class="fas fa-cloud-upload-alt"></i> Push to HubSpot
+                    </button>
+                    <button id="finalise-btn" class="btn btn-success">
+                        <i class="fas fa-lock"></i> Finalise
+                    </button>
+                </div>
+            </div>
+
+            <!-- Line items -->
+            <div class="card">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                    <div class="card-title" style="margin-bottom:0;"><i class="fas fa-list"></i> Materials &amp; Services</div>
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <label class="toggle-row">
+                            <input type="checkbox" id="vat-toggle" checked>
+                            VAT (5%)
+                        </label>
+                        <button id="add-item-btn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Item
+                        </button>
+                    </div>
+                </div>
+
+                <div class="items-table-wrap">
+                    <table class="items-table" id="items-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Description</th>
+                                <th>Pricing Type</th>
+                                <th style="text-align:right;">Qty</th>
+                                <th style="text-align:right;">Unit Price</th>
+                                <th style="text-align:right;">Line Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="items-tbody">
+                            <tr class="empty-row">
+                                <td colspan="7">No items yet. Click "Add Item" to start.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Totals -->
+                <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border-color);">
+                    <table class="totals-table">
+                        <tr>
+                            <td class="label">Sub-Total</td>
+                            <td class="amount"><span id="subtotal-cell">0.00</span></td>
+                        </tr>
+                        <tr id="vat-row">
+                            <td class="label">VAT (5%)</td>
+                            <td class="amount"><span id="vat-cell">0.00</span></td>
+                        </tr>
+                        <tr class="grand-row">
+                            <td class="label">Grand Total</td>
+                            <td class="amount"><span id="grandtotal-cell">0.00</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+        </section><!-- /boq-section -->
+
+    </main><!-- /boq-container -->
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { init } from './js/boq.js';
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
